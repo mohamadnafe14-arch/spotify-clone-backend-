@@ -1,0 +1,1 @@
+print("VENV is acticated")
