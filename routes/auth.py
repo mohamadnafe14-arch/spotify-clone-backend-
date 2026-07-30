@@ -38,4 +38,6 @@ def login(user:UserLogin,db:Session=Depends(get_db)):
 @router.get("/")
 def get_current_users(db:Session=Depends(get_db),user_info:dict=Depends(auth_middleware)):
     user_db = db.query(User).filter(User.id == user_info["id"]).first()
+    if not user_db:
+        raise HTTPException(404,"User not found")
     return {"user": user_db, "token": user_info["x_auth_token"]}
