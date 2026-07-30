@@ -6,6 +6,7 @@ from sqlalchemy.orm import Session
 from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile
 from database import get_db
 from middleware.auth_middleware import auth_middleware
+from models.song import Song
 cloudinary.config( 
     cloud_name = "ebia0lc9", 
     api_key = "414348853487241", 
@@ -23,11 +24,20 @@ async def upload(song: UploadFile = File(...)
                  ,auth_info: dict = Depends(auth_middleware)
                  , db: Session = Depends(get_db)):
     try:
-        folder_name = str(uuid.uuid4())
-        thumbnail_url = cloudinary.uploader.upload(fileobj=thumbnail.file,
-                                                    folder=f"songs/{folder_name}")
-        song_url = cloudinary.uploader.upload(fileobj=song.file,
-                                                folder=f"songs/{folder_name}")
-        pass
+        song_id = str(uuid.uuid4())
+        thumbnail_response = cloudinary.uploader.upload(fileobj=thumbnail.file,
+                                                    folder=f"songs/{song_id}")
+        song_response = cloudinary.uploader.upload(fileobj=song.file,
+                                                folder=f"songs/{song_id}")
+        song = Song(id=song_id,
+                    song_name=songName,
+                    artists=artists,
+                    color_hex=color_hex,
+                    thumbnail_url=thumbnail_response["url"],
+                    song_url=song_response["url"])
+        db.add(song)
+        db.commit()
+        db.refresh(song)
+        return {"song": song}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
