@@ -1,5 +1,5 @@
 import uuid
-
+import traceback
 import cloudinary
 import cloudinary.uploader
 from sqlalchemy.orm import Session
@@ -15,29 +15,36 @@ cloudinary.config(
 )
 router = APIRouter()
 
-@router.post("/upload")
+@router.post("/upload",status_code = 201)
 async def upload(song: UploadFile = File(...)
                  ,thumbnail: UploadFile = File(...)
-                 ,artists: str = Form(...)
+                 ,artist: str = Form(...)
                  ,songName: str = Form(...)
                  ,color_hex: str = Form(...)
                  ,auth_info: dict = Depends(auth_middleware)
                  , db: Session = Depends(get_db)):
     try:
         song_id = str(uuid.uuid4())
-        thumbnail_response = cloudinary.uploader.upload(fileobj=thumbnail.file,
+        thumbnail_response = cloudinary.uploader.upload(thumbnail.file,
+                                                        resource_type="image",
                                                     folder=f"songs/{song_id}")
-        song_response = cloudinary.uploader.upload(fileobj=song.file,
+        song_response = cloudinary.uploader.upload(song.file,
+                                                resource_type="auto",
                                                 folder=f"songs/{song_id}")
         song = Song(id=song_id,
                     song_name=songName,
-                    artists=artists,
+                    artist=artist,
                     color_hex=color_hex,
-                    thumbnail_url=thumbnail_response["url"],
-                    song_url=song_response["url"])
+                    thumbnail_url=thumbnail_response["secure_url"],
+                    song_url=song_response["secure_url"])
         db.add(song)
         db.commit()
         db.refresh(song)
         return {"song": song}
     except Exception as e:
+        traceback.print_exc()
         raise HTTPException(status_code=500, detail=str(e))
+@router.get("/")
+def get_songs(db: Session = Depends(get_db), auth_info: dict = Depends(auth_middleware)):
+    songs = db.query(Song).all()
+    return songs
