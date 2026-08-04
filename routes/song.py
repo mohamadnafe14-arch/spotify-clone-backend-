@@ -2,10 +2,11 @@ import uuid
 import traceback
 import cloudinary
 import cloudinary.uploader
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, joinedload
 from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile
 from database import get_db
 from middleware.auth_middleware import auth_middleware
+from models.favourite import Favourite
 from models.song import Song
 from pydantic_schemas.favourite_song import FavouriteSong
 cloudinary.config( 
@@ -50,8 +51,34 @@ def get_songs(db: Session = Depends(get_db), auth_info: dict = Depends(auth_midd
     songs = db.query(Song).all()
     return songs
 @router.post("/favourite")
-def add_favourite(favourite_song: FavouriteSong
+def toggle_favourite(favourite_song: FavouriteSong
                   ,db:Session = Depends(get_db)
                   , auth_info: dict = Depends(auth_middleware)
                   ):
-   pass
+    try:
+        user_id = auth_info["id"]
+        song_id = favourite_song.id
+        favourite = db.query(Favourite).filter(Favourite.user_id == user_id, Favourite.song_id == song_id).first()
+        if favourite:
+            db.delete(favourite)
+            db.commit()
+            return {"message": "Song removed from favourites"}
+        else:
+            new_favourite = Favourite(id=str(uuid.uuid4()), user_id=user_id, song_id=song_id)
+            db.add(new_favourite)
+            db.commit()
+            db.refresh(new_favourite)
+            return {"message": "Song added to favourites", "favourite": new_favourite}
+    except Exception as e:
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail=str(e))
+
+@router.get("/favourites")    
+def get_favourites(db: Session = Depends(get_db), auth_info: dict = Depends(auth_middleware)):
+    try:
+        user_id = auth_info["id"]
+        favourites = db.query(Favourite).filter(Favourite.user_id == user_id).options(joinedload(Favourite.song)).all()
+        return favourites
+    except Exception as e:
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail=str(e))

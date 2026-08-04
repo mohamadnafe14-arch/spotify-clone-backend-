@@ -1,5 +1,5 @@
 import uuid
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, joinedload
 import bcrypt
 from fastapi import APIRouter, Depends, HTTPException
 from database import get_db
@@ -28,7 +28,7 @@ def create_user(user: UserCreate,db:Session=Depends(get_db)):
     return {"token": token, "user": user_db}
 @router.post("/login")
 def login(user:UserLogin,db:Session=Depends(get_db)):
-    user_db = db.query(User).filter(User.email == user.email).first()
+    user_db = db.query(User).filter(User.email == user.email).options(joinedload(User.favourites)).first()
     if not user_db:
         raise HTTPException(status_code=400, detail="User does not exist")
     if not bcrypt.checkpw(user.password.encode(), user_db.password):
@@ -37,7 +37,7 @@ def login(user:UserLogin,db:Session=Depends(get_db)):
     return {"token": token, "user": user_db}
 @router.get("/")
 def get_current_users(db:Session=Depends(get_db),user_info:dict=Depends(auth_middleware)):
-    user_db = db.query(User).filter(User.id == user_info["id"]).first()
+    user_db = db.query(User).filter(User.id == user_info["id"]).options(joinedload(User.favourites)).first()
     if not user_db:
         raise HTTPException(404,"User not found")
     return {"user": user_db, "token": user_info["x_auth_token"]}
