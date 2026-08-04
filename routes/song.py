@@ -9,11 +9,17 @@ from middleware.auth_middleware import auth_middleware
 from models.favourite import Favourite
 from models.song import Song
 from pydantic_schemas.favourite_song import FavouriteSong
-cloudinary.config( 
-    cloud_name = "ebia0lc9", 
-    api_key = "414348853487241", 
-    api_secret = "UJeZw8N8n4QEwBXFID95evYn7GU", 
-    secure=True
+from dotenv import load_dotenv
+import os
+import cloudinary
+
+load_dotenv()
+
+cloudinary.config(
+    cloud_name=os.getenv("CLOUDINARY_CLOUD_NAME"),
+    api_key=os.getenv("CLOUDINARY_API_KEY"),
+    api_secret=os.getenv("CLOUDINARY_API_SECRET"),
+    secure=True,
 )
 router = APIRouter()
 
@@ -62,13 +68,13 @@ def toggle_favourite(favourite_song: FavouriteSong
         if favourite:
             db.delete(favourite)
             db.commit()
-            return {"message": "Song removed from favourites"}
+            return {"message": "Removed"}
         else:
             new_favourite = Favourite(id=str(uuid.uuid4()), user_id=user_id, song_id=song_id)
             db.add(new_favourite)
             db.commit()
             db.refresh(new_favourite)
-            return {"message": "Song added to favourites", "favourite": new_favourite}
+            return {"message": "Added"}
     except Exception as e:
         traceback.print_exc()
         raise HTTPException(status_code=500, detail=str(e))
