@@ -7,6 +7,7 @@ from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile
 from database import get_db
 from middleware.auth_middleware import auth_middleware
 from models.song import Song
+from pydantic_schemas.favourite_song import FavouriteSong
 cloudinary.config( 
     cloud_name = "ebia0lc9", 
     api_key = "414348853487241", 
@@ -48,3 +49,9 @@ async def upload(song: UploadFile = File(...)
 def get_songs(db: Session = Depends(get_db), auth_info: dict = Depends(auth_middleware)):
     songs = db.query(Song).all()
     return songs
+@router.post("/favourite")
+def add_favourite(favourite_song: FavouriteSong
+                  ,db:Session = Depends(get_db)
+                  , auth_info: dict = Depends(auth_middleware)
+                  ):
+   pass
